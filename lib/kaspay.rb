@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-require 'watir-webdriver'
+require 'watir'
 require 'headless'
 require_relative 'meta_stuff'
 require_relative 'kernel_patch'
