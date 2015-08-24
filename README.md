@@ -36,6 +36,6 @@ begin
     puts "Saldo KasPaymu sekarang #{kaspay.get_balance}"
 rescue LoginError => e
     trial.join
-    puts "Kamu tidak login. Mencoba login..."
+    puts "Kamu tidak login. Mencoba login..." # override error message berbahasa inggris
 end
 ```
