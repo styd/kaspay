@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Adrian Setyadi"]
   spec.email         = ["a.styd@yahoo.com"]
   spec.summary       = %q{Unofficial KasPay access wrapper gem.}
-  spec.description   = %q{A gem to access KasPay web using watir-webdriver gem and X virtual framebuffer wrapped by headless gem.}
+  spec.description   = %q{A gem to access KasPay web using watir gem and X virtual framebuffer wrapped by headless gem.}
   spec.homepage      = "https://github.com/styd/kaspay"
   spec.license       = "MIT"
 
