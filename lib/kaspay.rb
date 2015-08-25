@@ -42,11 +42,6 @@ class KasPay
    private :headless=
 
    def initialize user = { email: "", password: "" }
-      headless = Headless.new
-      headless.start
-      
-      @browser = Watir::Browser.start LOGIN_URL
-
       unless user[:email] == "" || user[:password] == ""
          email = user[:email]
          password = user[:password]
@@ -55,6 +50,11 @@ class KasPay
    end
    
    def login 
+      headless = Headless.new
+      headless.start
+      
+      @browser = Watir::Browser.start LOGIN_URL
+
       browser.text_field(id: 'username').set email
       browser.text_field(id: 'password').set password
       browser.button(name: 'button').click
@@ -167,7 +167,11 @@ private
       def to_s
          "Rp " + value.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse + ".00"
       end
-      
+
+      def inspect
+         "#<#{self.class}:0x#{(object_id << 1).to_s(16)} value=#{value}>"
+      end
+               
       alias_method :to_i, :value
    end
 end
