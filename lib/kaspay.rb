@@ -44,8 +44,8 @@ class KasPay
 
    def initialize user = { email: "", password: "" }
       unless user[:email] == "" || user[:password] == ""
-         email = user[:email]
-         password = user[:password]
+         @email = user[:email]
+         @password = user[:password]
          login 
       end
    end
