@@ -1,7 +1,8 @@
 # KasPay
-## Description
+## Description  
+A ruby library to access [KasPay](https://www.kaspay.com) with your account.  
 
-## Installation
+## Installation  
 Install the X virtual framebuffer that we will use to run the Watir::Browser  
 
     sudo apt-get install xvfb     
@@ -10,7 +11,7 @@ and then:
 
     gem install kaspay    
     
-## Usage
+## Usage  
 Put this code wherever you're going to use it:  
 
     require 'kaspay'  
@@ -24,18 +25,11 @@ In `Gemfile`:
 ```ruby
 require 'kaspay'
 
-trial = Thread.new do
-    while !kaspay.logged_in?
-        kaspay = KasPay.login "email@example.com", "Som3p@sSw0rD"
-    end
-end
-
-begin
-    kaspay = KasPay.login "email@example.com", "Som3p@sSw0rD"
-    puts "Halo, #{kaspay.get_name}"
-    puts "Saldo KasPaymu sekarang #{kaspay.get_balance}"
-rescue LoginError => e
-    trial.join
-    puts "Kamu tidak login. Mencoba login..." # override error message berbahasa inggris
-end
+kaspay = KasPay.login email: "email@example.com", password: "yOurp@sSw0rD"
+puts "#{kaspay.get_name}'s Savings:"
+puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+puts " Bank A balance".ljust(15) + ": " + "Rp 500,000.00".rjust(20)
+puts " Bank B balance".ljust(15) + ": " + "Rp 600,000.00".rjust(20)
+puts " KasPay balance".ljust(15) + ": " + kaspay.get_balance.to_s.rjust(20)
+puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 ```
