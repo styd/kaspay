@@ -40,6 +40,7 @@ class KasPay
    attr_reader :password
    private :headless
    private :headless=
+   private :password
 
    def initialize user = { email: "", password: "" }
       unless user[:email] == "" || user[:password] == ""
