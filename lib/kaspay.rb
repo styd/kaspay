@@ -114,7 +114,7 @@ class KasPay
    end
 
    def inspect
-      "#<#{self.class}:0x#{(object_id << 1).to_s(16)}>"
+      "#<#{self.class}:0x#{(object_id << 1).to_s(16)} name=\"#{get_name}\">"
    end
    
    def method_missing(m, *args, &block)  
