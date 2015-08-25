@@ -26,7 +26,7 @@ In `Gemfile`:
 require 'kaspay'
 
 kaspay = KasPay.login email: "email@example.com", password: "yOurp@sSw0rD"
-puts "#{kaspay.get_name}'s Savings:"
+puts "#{kaspay.get_name}'s savings with account number #{kaspay.get_acc_num}:"
 puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 puts " Bank A balance".ljust(15) + ": " + "Rp 500,000.00".rjust(20)
 puts " Bank B balance".ljust(15) + ": " + "Rp 600,000.00".rjust(20)
