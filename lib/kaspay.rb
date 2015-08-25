@@ -37,14 +37,14 @@ class KasPay
    attr_accessor :browser
    attr_accessor :headless
    
-   def initialize email, password
+   def initialize user = { email: "email@example.com", password: "p4sSw0rD" }
       headless = Headless.new
       headless.start
       
       @browser = Watir::Browser.start LOGIN_URL
       
-      browser.text_field(id: 'username').set email
-      browser.text_field(id: 'password').set password
+      browser.text_field(id: 'username').set user[:email]
+      browser.text_field(id: 'password').set user[:password]
       browser.button(name: 'button').click
    end
    
