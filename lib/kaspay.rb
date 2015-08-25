@@ -36,22 +36,44 @@ class KasPay
    
    attr_accessor :browser
    attr_accessor :headless
-   
-   def initialize user = { email: "email@example.com", password: "p4sSw0rD" }
+   attr_reader :email
+   attr_reader :password
+   private :headless
+   private :headless=
+
+   def initialize user = { email: "", password: "" }
       headless = Headless.new
       headless.start
       
       @browser = Watir::Browser.start LOGIN_URL
-      
-      browser.text_field(id: 'username').set user[:email]
-      browser.text_field(id: 'password').set user[:password]
-      browser.button(name: 'button').click
+
+      unless user[:email] == "" || user[:password] == ""
+         email = user[:email]
+         password = user[:password]
+         login 
+      end
    end
    
+   def login 
+      browser.text_field(id: 'username').set email
+      browser.text_field(id: 'password').set password
+      browser.button(name: 'button').click
+   end
+
+   def email= mail
+      @email = mail
+      login if user_data_complete?
+   end
+
+   def password= pass 
+      @password = pass
+      login if user_data_complete?
+   end
+
    def current_url
       browser.url
    end
-   
+
    def goto path
       url = (path[0] == "/" ? (BASE_URL + path) : path)
       browser.goto url
@@ -79,7 +101,20 @@ class KasPay
    end
    
    def logged_in?
-      logout_link.exists?
+      return logout_link.exists? unless browser.nil?
+      return false
+   end
+
+   def logged_out?
+      return !logged_in?
+   end
+
+   def user_data_complete?
+      email != "" && password != "" 
+   end
+
+   def inspect
+      "#<#{self.class}:0x#{(object_id << 1).to_s(16)}>"
    end
    
    def method_missing(m, *args, &block)  
@@ -104,7 +139,7 @@ private
    def logout_link
       logout_link = browser.a(href: "https://www.kaspay.com/account/logout")
    end
-   
+
    # inner class Money
    class Money
       attr_accessor :value
@@ -130,7 +165,7 @@ private
       end
       
       def to_s
-         "Rp " + value.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1.').reverse + ",-"
+         "Rp " + value.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse + ".00"
       end
       
       alias_method :to_i, :value
@@ -138,4 +173,7 @@ private
 end
 
 class LoginError < StandardError
+end
+
+class UserDataError < StandardError
 end
