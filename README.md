@@ -21,7 +21,7 @@ In `Gemfile`:
     gem 'kaspay'
 
 ## Examples
-###Code
+### Code
 ```ruby
 require 'kaspay'
 
@@ -40,4 +40,15 @@ puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 puts " Total balance".ljust(15) + ": " + (kaspay.balance + 500000 + KasPay::Money.new(600000)).to_s.rjust(20)
 puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 kaspay.logout!
+```
+### Output  
+```ruby
+#=> John Doe's savings with account number 12345678:
+#=> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#=>  Bank A balance:        Rp 500,000.00
+#=>  Bank B balance:        Rp 600,000.00
+#=>  KasPay balance:        Rp 915,826.00
+#=> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#=>  Total balance :      Rp 2,015,826.00
+#=> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
