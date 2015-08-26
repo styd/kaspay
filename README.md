@@ -37,7 +37,7 @@ puts " Bank A balance".ljust(15) + ": " + "Rp 500,000.00".rjust(20)
 puts " Bank B balance".ljust(15) + ": " + "Rp 600,000.00".rjust(20)
 puts " KasPay balance".ljust(15) + ": " + kaspay.get_balance.to_s.rjust(20)
 puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-puts " Total balance".ljust(15) + ": " + (kaspay.get_balance + 500000 + KasPay::Money.new(600000)).to_s.rjust(20)
+puts " Total balance".ljust(15) + ": " + (kaspay.balance + 500000 + KasPay::Money.new(600000)).to_s.rjust(20)
 puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 kaspay.logout!
 ```
