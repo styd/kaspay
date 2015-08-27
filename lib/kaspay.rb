@@ -11,6 +11,12 @@ class KasPay
    # Assign methods from MetaStuff module as KasPay class methods
    extend MetaStuff
 
+   # A bunch of constants belong to KasPay.
+   BASE_URL = "https://www.kaspay.com"
+   LOGIN_URL = BASE_URL + "/login" 
+   THINGS_TO_GET = %w(name balance acc_num).map(&:to_sym)
+   THE_GET_METHODS = add__get__to(THINGS_TO_GET)
+
    # Opening KasPay class singleton scope
    class << self
       
@@ -50,12 +56,6 @@ class KasPay
       # for instantiation.
       private :new
    end
-
-   # A bunch of constants belong to KasPay.
-   BASE_URL = "https://www.kaspay.com"
-   LOGIN_URL = BASE_URL + "/login" 
-   THINGS_TO_GET = %w(name balance acc_num).map(&:to_sym)
-   THE_GET_METHODS = add__get__to(THINGS_TO_GET)
    
    # Creates browser and headless methods for browsing without
    # a visible browser or 'head', and email and password methods
@@ -71,8 +71,8 @@ class KasPay
    private :password
 
    # Accept a hash argument from class methods `login`
-   def initialize user = { email: "", password: "" }
-      unless user[:email] == "" || user[:password] == ""
+   def initialize user = { email: nil, password: nil }
+      unless user[:email] == nil || user[:password] == nil
          @email = user[:email]
          @password = user[:password]
          login 
@@ -94,12 +94,13 @@ class KasPay
       browser.button(name: 'button').click
    end
 
-   #
+   # Sets email input
    def email= mail
       @email = mail
       login if user_data_complete?
    end
 
+   # Sets password input
    def password= pass 
       @password = pass
       login if user_data_complete?
@@ -145,7 +146,7 @@ class KasPay
    end
 
    def user_data_complete?
-      email != "" && password != "" 
+      !email.nil? && !password.nil? 
    end
 
    def inspect
