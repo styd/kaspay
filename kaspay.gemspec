@@ -6,7 +6,7 @@ require 'kaspay/version'
 Gem::Specification.new do |spec|
   spec.name          = "kaspay"
   spec.version       = KasPay::VERSION
-  spec.date          = "2015-08-25"
+  spec.date          = Time.now.strftime("%Y-%m-%d")
 
   spec.authors       = ["Adrian Setyadi"]
   spec.email         = ["a.styd@yahoo.com"]
