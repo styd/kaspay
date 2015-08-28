@@ -2,6 +2,7 @@
 # @author Adrian Setyadi
 # Copyright 2015
 # 
+require 'pstore'
 require 'watir'
 require 'headless'
 require_relative 'meta_stuff'
@@ -16,6 +17,8 @@ class KasPay
    LOGIN_URL = BASE_URL + "/login" 
    THINGS_TO_GET = %w(name balance acc_num).map(&:to_sym)
    THE_GET_METHODS = add__get__to(THINGS_TO_GET)
+   DATA_DIR = ENV['HOME'] + "/.kaspay"
+   DATA_PATH = DATA_DIR + "/kaspay.dat"
 
    # Opening KasPay class singleton scope
    class << self
@@ -105,7 +108,7 @@ class KasPay
       @password = pass
       login if user_data_complete?
    end
-
+   
    def current_url
       browser.url
    end
@@ -149,6 +152,23 @@ class KasPay
       !email.nil? && !password.nil? 
    end
 
+   def save_login login_name
+      Dir.mkdir(DATA_DIR) unless Dir.exists?(DATA_DIR)
+      kasdb = PStore.new(DATA_PATH)
+      kasdb.transaction do
+         kasdb[login_name] = {email: email, password: password}
+      end
+   end
+
+   def load_login login_name
+      kasdb = PStore.new(DATA_PATH)
+      kasdb.transaction do
+         @email = kasdb[login_name][:email]
+         @password = kasdb[login_name][:password]
+         return kasdb[login_name]
+      end
+   end
+ 
    def inspect
       "#<#{self.class}:0x#{(object_id << 1).to_s(16)} logged_in=#{logged_in?}>"
    end
@@ -157,7 +177,7 @@ class KasPay
       if THINGS_TO_GET.include? m
          send("get_#{m}")
       else
-         raise NoMethodError, "undefined method `#{m}' for #{self}"
+         super
       end 
    end 
    
@@ -172,6 +192,16 @@ class KasPay
    
 private
 
+   def login_data_exists?
+      data = nil
+      begin
+         PStore.new("kaspay.dat").tap{|x| x.transaction{ data = x.roots}}
+         return (data != [])
+      rescue NameError
+         return false
+      end
+   end
+  
    def logout_link
       logout_link = browser.a(href: "https://www.kaspay.com/account/logout")
    end
