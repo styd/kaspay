@@ -9,16 +9,16 @@ require_relative 'meta_stuff'
 require_relative 'kernel_patch'
 
 class KasPay
-   # Assign methods from MetaStuff module as KasPay class methods
+   # Assigns methods from MetaStuff module as KasPay class methods
    extend MetaStuff
 
-   # A bunch of constants belong to KasPay.
+   # A bunch of KasPay constants.
    BASE_URL = "https://www.kaspay.com"
    LOGIN_URL = BASE_URL + "/login" 
    THINGS_TO_GET = %w(name balance acc_num).map(&:to_sym)
    THE_GET_METHODS = add__get__to(THINGS_TO_GET)
    DATA_DIR = ENV['HOME'] + "/.kaspay"
-   DATA_PATH = DATA_DIR + "/kaspay.dat"
+   LOGIN_PATH = DATA_DIR + "/login.dat"
 
    # Opening KasPay class singleton scope
    class << self
@@ -27,7 +27,7 @@ class KasPay
       # the information.
       static_pages = %w(about term) # more will come
      
-      # Iterate through static pages list to make methods named the
+      # Iterates through static pages list to make methods named the
       # the same as the member of the list. These methods will be
       # the class methods of KasPay.
       # Example usage:
@@ -57,6 +57,46 @@ class KasPay
       alias_method :login, :new
       # Hidden to force the use of `login` as the class method
       # for instantiation.
+
+      def load_login login_name
+         raise LoadLoginError, "login data \"#{login_name}\" cannot be found" unless login_data_exists? login_name
+         email, password = nil
+         login_scope do |login|
+            email = login[login_name][:email]
+            password = login[login_name][:password]
+         end
+         login email: email, password: password
+      end
+ 
+      def login_data_exists? login_name
+         data = nil
+         begin
+            PStore.new(LOGIN_PATH).tap{|x| x.transaction{ data = x.roots}}
+            return (data.any? {|name| name == login_name})
+         rescue NameError
+            return false
+         end
+      end
+  
+      def clear_login login_name = nil
+         login_scope do |login|
+            if login_name.any?
+               login.delete login_name
+            elsif login_name.nil?
+               login.roots.each do |name|
+                  login.delete name
+               end
+            end
+         end  
+      end
+   
+      def login_scope
+         kasdb = PStore.new(LOGIN_PATH)
+         kasdb.transaction do
+            yield(kasdb)
+         end
+      end
+ 
       private :new
    end
    
@@ -134,9 +174,13 @@ class KasPay
    def home
       goto "/"
    end
+
+   def logout
+      logout_link.click
+   end
    
    def logout!
-      logout_link.click
+      logout if logged_in?
    end
    
    def logged_in?
@@ -154,21 +198,11 @@ class KasPay
 
    def save_login login_name
       Dir.mkdir(DATA_DIR) unless Dir.exists?(DATA_DIR)
-      kasdb = PStore.new(DATA_PATH)
-      kasdb.transaction do
-         kasdb[login_name] = {email: email, password: password}
+      KasPay.login_scope do |login|
+         login[login_name] = {email: email, password: password}
       end
    end
 
-   def load_login login_name
-      kasdb = PStore.new(DATA_PATH)
-      kasdb.transaction do
-         @email = kasdb[login_name][:email]
-         @password = kasdb[login_name][:password]
-         return kasdb[login_name]
-      end
-   end
- 
    def inspect
       "#<#{self.class}:0x#{(object_id << 1).to_s(16)} logged_in=#{logged_in?}>"
    end
@@ -185,22 +219,10 @@ class KasPay
       raise LoginError, "you are not logged in" unless logged_in?
    end
    
-   before( THE_GET_METHODS + [:logout!] ){ :check_login }
-   
-   alias_method :logout, :logout!
+   before( THE_GET_METHODS + [:logout] ){ :check_login }
    alias_method :url, :current_url
-   
+ 
 private
-
-   def login_data_exists?
-      data = nil
-      begin
-         PStore.new("kaspay.dat").tap{|x| x.transaction{ data = x.roots}}
-         return (data != [])
-      rescue NameError
-         return false
-      end
-   end
   
    def logout_link
       logout_link = browser.a(href: "https://www.kaspay.com/account/logout")
@@ -214,6 +236,7 @@ private
       new_methods = Fixnum.instance_methods(false) \
          .delete_if{|m| fixnum_methods_to_discard.include? m}
       
+      # Inheriting some methods from Fixnum
       new_methods.each do |m|
          define_method(m) do |arg, &block|
             arg = arg.to_i # to convert string or Money object to Integer 
@@ -245,5 +268,5 @@ end
 class LoginError < StandardError
 end
 
-class UserDataError < StandardError
+class LoadLoginError < StandardError
 end

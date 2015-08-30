@@ -1,8 +1,4 @@
 module MetaStuff
-  def method_missing(m, *args, &block)  
-    raise NoMethodError, "undefined method `#{m}' for #{self}:#{self.class}"
-  end  
-
   def before(names, &block)
     names.each do |name|
       m = instance_method(name)
