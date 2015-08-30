@@ -6,7 +6,6 @@ require 'pstore'
 require 'watir'
 require 'headless'
 require_relative 'meta_stuff'
-require_relative 'kernel_patch'
 
 class KasPay
    # Assigns methods from MetaStuff module as KasPay class methods
@@ -15,8 +14,6 @@ class KasPay
    # A bunch of KasPay constants.
    BASE_URL = "https://www.kaspay.com"
    LOGIN_URL = BASE_URL + "/login" 
-   THINGS_TO_GET = %w(name balance acc_num).map(&:to_sym)
-   THE_GET_METHODS = add__get__to(THINGS_TO_GET)
    DATA_DIR = ENV['HOME'] + "/.kaspay"
    LOGIN_PATH = DATA_DIR + "/login.dat"
 
@@ -171,6 +168,14 @@ class KasPay
       browser.span(class: "kaspay-id").text.sub("KasPay Account: ", "").to_i
    end
    
+   def self.all_get_methods
+     instance_methods.grep(/^get_/)
+   end
+   
+   def self.things_to_get
+      all_get_methods.map{|m| m.id2name.sub("get_","")}
+   end
+   
    def home
       goto "/"
    end
@@ -206,9 +211,9 @@ class KasPay
    def inspect
       "#<#{self.class}:0x#{(object_id << 1).to_s(16)} logged_in=#{logged_in?}>"
    end
-   
+
    def method_missing(m, *args, &block)  
-      if THINGS_TO_GET.include? m
+      if KasPay.things_to_get.include? m.id2name
          send("get_#{m}")
       else
          super
@@ -219,7 +224,7 @@ class KasPay
       raise LoginError, "you are not logged in" unless logged_in?
    end
    
-   before( THE_GET_METHODS + [:logout] ){ :check_login }
+   before( all_get_methods + [:logout] ){ :check_login }
    alias_method :url, :current_url
  
 private
