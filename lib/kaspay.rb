@@ -5,6 +5,7 @@
 require 'pstore'
 require 'watir'
 require 'headless'
+require_relative 'kernel_patch.rb'
 require_relative 'meta_stuff'
 
 class KasPay
@@ -54,6 +55,14 @@ class KasPay
       alias_method :login, :new
       # Hidden to force the use of `login` as the class method
       # for instantiation.
+   
+      def all_get_methods
+        instance_methods.grep(/^get_/)
+      end
+      
+      def things_to_get
+         all_get_methods.map{|m| m.id2name.sub("get_","")}
+      end
 
       def load_login login_name
          raise LoadLoginError, "login data \"#{login_name}\" cannot be found" unless login_data_exists? login_name
@@ -63,35 +72,6 @@ class KasPay
             password = login[login_name][:password]
          end
          login email: email, password: password
-      end
- 
-      def login_data_exists? login_name
-         data = nil
-         begin
-            PStore.new(LOGIN_PATH).tap{|x| x.transaction{ data = x.roots}}
-            return (data.any? {|name| name == login_name})
-         rescue NameError
-            return false
-         end
-      end
-  
-      def clear_login login_name = nil
-         login_scope do |login|
-            if login_name.any?
-               login.delete login_name
-            elsif login_name.nil?
-               login.roots.each do |name|
-                  login.delete name
-               end
-            end
-         end  
-      end
-   
-      def login_scope
-         kasdb = PStore.new(LOGIN_PATH)
-         kasdb.transaction do
-            yield(kasdb)
-         end
       end
  
       private :new
@@ -168,14 +148,6 @@ class KasPay
       browser.span(class: "kaspay-id").text.sub("KasPay Account: ", "").to_i
    end
    
-   def self.all_get_methods
-     instance_methods.grep(/^get_/)
-   end
-   
-   def self.things_to_get
-      all_get_methods.map{|m| m.id2name.sub("get_","")}
-   end
-   
    def home
       goto "/"
    end
@@ -203,7 +175,7 @@ class KasPay
 
    def save_login login_name
       Dir.mkdir(DATA_DIR) unless Dir.exists?(DATA_DIR)
-      KasPay.login_scope do |login|
+      login_scope do |login|
          login[login_name] = {email: email, password: password}
       end
    end
@@ -269,6 +241,10 @@ private
       alias_method :to_i, :value
    end
 end
+
+# Aliases for 'KasPay' class
+Kaspay = KasPay
+KASPAY = KasPay
 
 class LoginError < StandardError
 end
