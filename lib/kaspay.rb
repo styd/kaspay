@@ -6,6 +6,7 @@ require 'pstore'
 require 'watir'
 require 'headless'
 require_relative 'meta_stuff'
+require_relative 'kaspay/money'
 
 class KasPay
    # Assigns methods from MetaStuff module as KasPay class methods
@@ -205,18 +206,52 @@ class KasPay
       browser.span(class: "kaspay-id").text.sub("KasPay Account: ", "").to_i
    end
    
+   def get_transaction
+      t = {}
+      date = []
+      trxID = []
+      remarks = []
+      debit = []
+      credit = []
+
+      browser.tds(class: "date").each do |td|
+         date << td.text
+      end
+
+      browser.tds(class: "trxid").each do |td|
+         trxID << td.text   
+      end
+
+      browser.tds(class: "remarks").each do |td|
+         remarks << td.text   
+      end
+
+      browser.tds(class: "amount").each_slice(2) do |tda, tdb|
+         debit << tda.text   
+         credit << tdb.text
+      end
+
+      t[:date] = date
+      t[:trxID] = trxID
+      t[:remarks] = remarks
+      t[:debit] = debit
+      t[:credit] = credit
+      return t
+   end
+
    def home
       goto "/"
    end
 
-   def logout
-      calling_method = caller[0][/`.*'/][1..-2]
+   def logout!
+      calling_method = caller[0][/(?<=`).*(?=')/]
       logout_link.click
       delete_cookies unless calling_method == "delete_cookies"
    end
-   
-   def logout!
-      logout if logged_in?
+  
+   # Silently logs out 
+   def logout
+      logout! if logged_in?
    end
    
    def logged_in?
@@ -239,6 +274,10 @@ class KasPay
       end
       return nil
    end
+   
+   def check_login
+      raise LoginError, "you are not logged in" unless logged_in?
+   end
 
    def inspect
       "#<#{self.class}:0x#{(object_id << 1).to_s(16)} logged_in=#{logged_in?}>"
@@ -252,11 +291,7 @@ class KasPay
       end 
    end 
    
-   def check_login
-      raise LoginError, "you are not logged in" unless logged_in?
-   end
-   
-   before( all_get_methods + [:logout] ){ :check_login }
+   before( all_get_methods + [:logout!] ){ :check_login }
    alias_method :url, :current_url
  
 private
@@ -291,7 +326,7 @@ private
       current_cookies_scope do |cookies, cookies_name|
          cookies.delete(cookies_name)
       end
-      logout if logged_in?
+      logout! if logged_in?
       return nil
    end
     
@@ -314,42 +349,6 @@ private
 
    def logout_link
       logout_link = browser.a(href: "https://www.kaspay.com/account/logout")
-   end
-
-   # inner class Money
-   class Money
-      attr_accessor :value
-      
-      fixnum_methods_to_discard = %w(inspect -@ abs magnitude to_s dclone ~ & | ^ [] << >> size bit_length to_f).map(&:to_sym)
-      new_methods = Fixnum.instance_methods(false) \
-         .delete_if{|m| fixnum_methods_to_discard.include? m}
-      
-      # Inheriting some methods from Fixnum
-      new_methods.each do |m|
-         define_method(m) do |arg, &block|
-            arg = arg.to_i # to convert string or Money object to Integer 
-            self.value = value.send(m, arg)
-            return self
-         end
-      end
-      
-      def initialize value = 0
-         @value = Integer(value)
-      end
-      
-      def to_f
-         value * 1.0
-      end
-      
-      def to_s
-         "Rp " + value.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse + ".00"
-      end
-
-      def inspect
-         "#<#{self.class}:0x#{(object_id << 1).to_s(16)} value=#{value}>"
-      end
-               
-      alias_method :to_i, :value
    end
 end
 
