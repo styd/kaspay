@@ -207,23 +207,12 @@ class KasPay
    end
    
    def get_transaction
-      t = {}
-      date = []
-      trxID = []
-      remarks = []
-      debit = []
-      credit = []
+      date, trxID, remarks, debit, credit = Array.new(5){[]}
 
-      browser.tds(class: "date").each do |td|
-         date << td.text
-      end
-
-      browser.tds(class: "trxid").each do |td|
-         trxID << td.text   
-      end
-
-      browser.tds(class: "remarks").each do |td|
-         remarks << td.text   
+      %w(date trxID remarks).each do |column|
+         browser.tds(class: column).each do |td|
+            column << td.text
+         end
       end
 
       browser.tds(class: "amount").each_slice(2) do |tda, tdb|
@@ -231,12 +220,11 @@ class KasPay
          credit << tdb.text
       end
 
-      t[:date] = date
-      t[:trxID] = trxID
-      t[:remarks] = remarks
-      t[:debit] = debit
-      t[:credit] = credit
-      return t
+      t = {date: date,
+           trxID: trxID,
+           remarks: remarks,
+           debit: debit,
+           credit: credit}
    end
 
    def home
