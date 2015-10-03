@@ -15,6 +15,8 @@ class KasPay
    # A bunch of KasPay constants.
    BASE_URL = "https://www.kaspay.com"
    LOGIN_URL = BASE_URL + "/login" 
+   TRANSACTION_URL = BASE_URL + "/account/transactiondetails/" 
+   TRANSACTION_HISTORY_URL = BASE_URL + "/account/history/"
    DATA_DIR = ENV['HOME'] + "/.kaspay"
    LOGIN_PATH = DATA_DIR + "/login.dat"
    COOKIE_PATH = DATA_DIR + "/cookie.dat"
@@ -58,14 +60,14 @@ class KasPay
       # for instantiation.
    
       def all_get_methods
-        instance_methods.grep(/^get_/)
+         instance_methods.grep /^get_/
       end
       
       def things_to_get
          all_get_methods.map{|m| m.id2name.sub("get_","")}
       end
    
-      def data_scope path, &block
+      def data_scope(path, &block)
          kasdb = PStore.new(path)
          kasdb.transaction do
             yield(kasdb)
@@ -164,8 +166,8 @@ class KasPay
       # Cookies still exist
       else
          browser.cookies.clear
-         the_cookies.each do |cookie|
-            browser.cookies.add(cookie[:name], cookie[:value])
+         the_cookies.each do |cookies|
+            browser.cookies.add(cookies[:name], cookies[:value])
          end
          browser.goto BASE_URL 
       end
@@ -198,33 +200,88 @@ class KasPay
    end
    
    def get_balance
-      Money.new browser.div(class: "kaspay-balance") \
-         .span.text.sub("Rp ","").sub(".","").to_i
+      Money.new browser.div(class: "kaspay-balance").span.text
    end
    
    def get_acc_num 
       browser.span(class: "kaspay-id").text.sub("KasPay Account: ", "").to_i
    end
-   
-   def get_transaction
-      date, trxID, remarks, debit, credit = Array.new(5){[]}
-
-      %w(date trxID remarks).each do |column|
-         browser.tds(class: column).each do |td|
-            column << td.text
+  
+   def get_cookies_expire_time
+      current_cookies_scope do |cookies, cookies_name|
+         cookies[cookies_name][:cookies].each do |el|
+            if el[:name] == "kaspay_csrf_cookie" 
+               return DateTime.parse(el[:expires].to_s)
+            end
          end
       end
+   end
 
-      browser.tds(class: "amount").each_slice(2) do |tda, tdb|
-         debit << tda.text   
-         credit << tdb.text
+   def trx_to_num val_in_sym 
+      num = case val_in_sym
+            when :all_trx then 0
+            when :top_up then 1
+            when :payment_to then 2
+            when :payment_from then 3
+            when :redeem then 4
+            when :refund then 5
+            when :trx_fee then 6
+            else 0
+            end
+      return num.to_s
+   end
+      
+   def get_transaction options = {}
+      default_options = {
+         latest: 5,
+         type: :all_trx
+      }
+      options = default_options.merge(options)
+      non_payment_type = ["Transaction correction", "Topup"]
+      t = [] 
+      trx_ids = []
+      while options[:latest] - trx_ids.length > 0 
+         browser.goto(TRANSACTION_HISTORY_URL + trx_ids.length.to_s \
+                      + "?f=01/01/2009&t=" \
+                      + Time.now.strftime("%d/%m/%Y") \
+                      + "&transactiontype=" + trx_to_num(options[:type]))
+         browser.tds(class: "trxid").each do |td|
+            trx_ids << td.link.href.sub(/.*\/(.*)$/, '\1')
+         end
+         break if trx_ids.length % 5 > 0 || trx_ids.length == 0
       end
+      trx_ids.each do |trx_id|
+         browser.goto(TRANSACTION_URL + trx_id)
+         h = {}
+         data = []
+         browser.tds.each_slice(3){|a, b, c| data << c.text}
+         h[:date] = DateTime.parse(data[0] + "T" \
+                                   + data[1] + "+07:00")
+         h[:trx_id] = data[2]
+         h[:trx_type] = data[3]
+         h[:remark] = data[4]
+         h[:status] = data[5]
+         unless non_payment_type.include? h[:trx_type]
+            h[:seller] = data[6]
+            h[:merchant_trx_id] = data[7]
+            h[:product_id] = data[8]
+            h[:product_name] = data[9]
+            h[:quantity] = data[10].gsub(/[^0-9]/, '').to_i
+            h[:description] = data[11]
+            h[:amount] = Money.new data[12]
+         else
+            h[:amount] = Money.new data[6]
+         end
+         t << h
+      end
+      browser.goto(BASE_URL)
+      return t
+   end
 
-      t = {date: date,
-           trxID: trxID,
-           remarks: remarks,
-           debit: debit,
-           credit: credit}
+   def links
+      links = []
+      browser.tds(class: "trxid").each{|td| links << td.link.href.to_s}
+      links
    end
 
    def home
@@ -270,17 +327,12 @@ class KasPay
    def inspect
       "#<#{self.class}:0x#{(object_id << 1).to_s(16)} logged_in=#{logged_in?}>"
    end
-
-   def method_missing(m, *args, &block)  
-      if KasPay.things_to_get.include? m.id2name
-         send("get_#{m}")
-      else
-         super
-      end 
-   end 
    
    before( all_get_methods + [:logout!] ){ :check_login }
    alias_method :url, :current_url
+   KasPay.things_to_get.each do |m|
+      alias_method m, "get_#{m}"
+   end
  
 private
    
@@ -322,8 +374,8 @@ private
       time = Time.now
       cookies_name = time.strftime("%y%m%d%H%M%S").to_i.to_s(36)
       Dir.mkdir(DATA_DIR) unless Dir.exists?(DATA_DIR)
-      KasPay.cookies_scope do |cookie|
-         cookie[cookies_name] = {email: email, password: password, cookies: get_cookies}
+      KasPay.cookies_scope do |cookies|
+         cookies[cookies_name] = {email: email, password: password, cookies: get_cookies}
       end
    end
 

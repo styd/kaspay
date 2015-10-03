@@ -1,13 +1,13 @@
 module MetaStuff
-  def before(names, &block)
-    names.each do |name|
-      m = instance_method(name)
-      n = instance_method(yield)
-      define_method(name) do
-        n.bind(self).call 
-        m.bind(self).call
+   def before(names)
+      names.each do |name|
+         m = instance_method(name)
+         n = instance_method(yield)
+         define_method(name) do |*args, &block|
+            n.bind(self)
+            m.bind(self).(*args, &block)
+         end
       end
-    end
-    private yield
-  end
+      private yield
+   end
 end

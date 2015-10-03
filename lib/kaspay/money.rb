@@ -1,5 +1,5 @@
 class KasPay
-   # inner class Money
+   # Inner class Money
    class Money
       attr_accessor :value
       
@@ -17,7 +17,7 @@ class KasPay
       end
       
       def initialize value = 0
-         @value = Integer(value)
+         @value = value.gsub(/\s/, '').sub(/[\.\,]00$/, "").sub(/^Rp\s*(.*)$/, '\1').gsub(/[\.\,]/, '').to_i
       end
       
       def to_f
