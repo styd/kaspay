@@ -7,6 +7,7 @@ require 'watir'
 require 'headless'
 require_relative 'meta_stuff'
 require_relative 'kaspay/money'
+require_relative 'kaspay/transaction'
 
 class KasPay
    # Assigns methods from MetaStuff module as KasPay class methods
@@ -237,45 +238,23 @@ class KasPay
          type: :all_trx
       }
       options = default_options.merge(options)
-      non_payment_type = ["Transaction correction", "Topup"]
-      t = [] 
       trx_ids = []
       while options[:latest] - trx_ids.length > 0 
          browser.goto(TRANSACTION_HISTORY_URL + trx_ids.length.to_s \
                       + "?f=01/01/2009&t=" \
                       + Time.now.strftime("%d/%m/%Y") \
                       + "&transactiontype=" + trx_to_num(options[:type]))
+
          browser.tds(class: "trxid").each do |td|
             trx_ids << td.link.href.sub(/.*\/(.*)$/, '\1')
          end
          break if trx_ids.length % 5 > 0 || trx_ids.length == 0
       end
-      trx_ids.each do |trx_id|
-         browser.goto(TRANSACTION_URL + trx_id)
-         h = {}
-         data = []
-         browser.tds.each_slice(3){|a, b, c| data << c.text}
-         h[:date] = DateTime.parse(data[0] + "T" \
-                                   + data[1] + "+07:00")
-         h[:trx_id] = data[2]
-         h[:trx_type] = data[3]
-         h[:remark] = data[4]
-         h[:status] = data[5]
-         unless non_payment_type.include? h[:trx_type]
-            h[:seller] = data[6]
-            h[:merchant_trx_id] = data[7]
-            h[:product_id] = data[8]
-            h[:product_name] = data[9]
-            h[:quantity] = data[10].gsub(/[^0-9]/, '').to_i
-            h[:description] = data[11]
-            h[:amount] = Money.new data[12]
-         else
-            h[:amount] = Money.new data[6]
-         end
-         t << h
+      trx_ids.each_with_index do |trx_id, i|
+         trx_ids[i] = Transaction.new trx_id, browser
       end
       browser.goto(BASE_URL)
-      return t
+      return trx_ids
    end
 
    def links
