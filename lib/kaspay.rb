@@ -102,7 +102,9 @@ class KasPay
       end
 
       def load_login login_name
-         raise LoadLoginError, "login data \"#{login_name}\" cannot be found" unless login_data_exists? login_name
+         raise LoadLoginError,
+            "login data \"#{login_name}\" cannot be found" \
+               unless login_data_exists? login_name
          email, password = nil
          login_scope do |login|
             email = login[login_name][:email]
@@ -144,9 +146,9 @@ class KasPay
    end
    
    # Actually starts the login process after email and password
-   # provided. This is different from the class method
-   # `login` that only creates KasPay object and compounding the
-   # data for login. 
+   # provided. This is different from the class method `login`
+   # that only creates KasPay object and compounding the data
+   # for login. 
    def login 
       headless = Headless.new
       headless.start
@@ -218,7 +220,7 @@ class KasPay
       end
    end
 
-   def trx_to_num val_in_sym 
+   def trx_type_to_num val_in_sym 
       num = case val_in_sym
             when :all_trx then 0
             when :top_up then 1
@@ -229,32 +231,62 @@ class KasPay
             when :trx_fee then 6
             else 0
             end
-      return num.to_s
+      return num
    end
       
    def get_transaction options = {}
       default_options = {
          latest: 5,
-         type: :all_trx
+         type: :all_trx,
+         oldest_only: false
       }
       options = default_options.merge(options)
+      unless options[:oldest_only]
+         no_of_trx = options[:latest]
+         get_latest_transactions no_of_trx, trx_type_to_num(options[:type])
+      else
+         trx_no = options[:latest] - 1
+         get_transaction_number trx_no, trx_type_to_num(options[:type])
+      end
+   end
+
+   def get_latest_transactions no_of_trx, type = 0
       trx_ids = []
-      while options[:latest] - trx_ids.length > 0 
-         browser.goto(TRANSACTION_HISTORY_URL + trx_ids.length.to_s \
+      while no_of_trx - trx_ids.length > 0 
+         browser.goto(TRANSACTION_HISTORY_URL \
+                      + trx_ids.length.to_s \
                       + "?f=01/01/2009&t=" \
                       + Time.now.strftime("%d/%m/%Y") \
-                      + "&transactiontype=" + trx_to_num(options[:type]))
+                      + "&transactiontype=" \
+                      + type.to_s)
 
          browser.tds(class: "trxid").each do |td|
             trx_ids << td.link.href.sub(/.*\/(.*)$/, '\1')
+            break if trx_ids.length == no_of_trx 
          end
-         break if trx_ids.length % 5 > 0 || trx_ids.length == 0
+         break if trx_ids.length == 0 \
+            || trx_ids.length >= no_of_trx
       end
       trx_ids.each_with_index do |trx_id, i|
          trx_ids[i] = Transaction.new trx_id, browser
       end
       browser.goto(BASE_URL)
       return trx_ids
+   end
+
+   def get_transaction_number trx_no, type = 0
+      row_number = trx_no % 5
+      browser.goto(TRANSACTION_HISTORY_URL \
+                   + (trx_no - row_number).to_s \
+                   + "?f=01/01/2009&t=" \
+                   + Time.now.strftime("%d/%m/%Y") \
+                   + "&transactiontype=" \
+                   + type.to_s)
+
+      trx_id = Transaction.new(browser.tds(class: "trxid")[row_number] \
+                  .link.href.sub(/.*\/(.*)$/, '\1'), browser)
+      browser.goto(BASE_URL)
+      return trx_id
    end
 
    def links
